@@ -1,0 +1,18 @@
+{
+  "zuhr": {
+    "time": "14:05",
+    "offsetMin": 10
+  },
+  "asr": {
+    "time": "17:00",
+    "offsetMin": 5
+  },
+  "maghrib": {
+    "time": "20:18",
+    "offsetMin": 10
+  },
+  "isha": {
+    "time": "20:22",
+    "offsetMin": 10
+  }
+}

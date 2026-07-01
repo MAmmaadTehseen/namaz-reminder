@@ -72,13 +72,20 @@ export async function getCanvasFileInfo(token: string, fileId: string): Promise<
   }>(token, "files.info", { file: fileId });
   const url = info.file?.url_private ?? info.file?.url_private_download;
   if (!url) throw new Error(`files.info returned no url_private for file ${fileId}.`);
-  const editTimestamp = info.file?.edit_timestamp ?? info.file?.updated ?? null;
+  // For canvases, `updated` tracks content regeneration and is often fresher than edit_timestamp.
+  const editTimestamp =
+    Math.max(info.file?.edit_timestamp ?? 0, info.file?.updated ?? 0) || null;
   return { urlPrivate: url, editTimestamp };
 }
 
-/** Authenticated download of a Slack private file URL. Guards the classic "HTML login page" trap. */
+/** Authenticated download of a Slack private file URL. Guards the classic "HTML login page" trap.
+ * Cache-busts so an edited Canvas isn't served from a stale cache/CDN copy. */
 export async function downloadPrivateFile(token: string, url: string): Promise<string> {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const bust = `${url.includes("?") ? "&" : "?"}_cb=${Date.now()}`;
+  const res = await fetch(`${url}${bust}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
   const contentType = res.headers.get("content-type") ?? "";
   const body = await res.text();
   if (!res.ok) {
