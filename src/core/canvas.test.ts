@@ -62,6 +62,27 @@ describe("parseCanvas — HTML input (realistic Slack canvas download)", () => {
     expect(byKey.zuhr).toMatchObject({ time: "14:00", offsetMin: 15 });
     expect(byKey.asr).toMatchObject({ time: "17:30", offsetMin: 5 });
   });
+
+  it("parses the real Slack Canvas HTML shape (quip-canvas-content, <p class=line>)", () => {
+    // This mirrors the actual download format observed from files.info -> url_private.
+    const html =
+      '<div class="quip-canvas-content">' +
+      '<h1 id="temp:C:x">Namaz Schedule</h1>' +
+      '<p id="temp:C:a" class="line">Status: ON</p>' +
+      '<p id="temp:C:b" class="line">default_offset = 10</p>' +
+      '<p id="temp:C:c" class="line">Weekend: Sat, Sun</p>' +
+      '<p id="temp:C:d" class="line">zuhr = 14:05</p>' +
+      '<p id="temp:C:e" class="line">asr = 17:00 | off=5 | on second floor</p>' +
+      '<p id="temp:C:f" class="line">maghrib = 19:45</p>' +
+      "</div>";
+    const s = parseCanvas(html, OPTS);
+    const byKey = Object.fromEntries(s.prayers.map((p) => [p.key, p]));
+    expect(s.status).toBe("on");
+    expect(s.weekendDays).toEqual([6, 0]);
+    expect(Object.keys(byKey).sort()).toEqual(["asr", "maghrib", "zuhr"]);
+    expect(byKey.asr).toMatchObject({ time: "17:00", offsetMin: 5, note: "on second floor" });
+    expect(s.errors).toEqual([]);
+  });
 });
 
 describe("parseCanvas — validation", () => {

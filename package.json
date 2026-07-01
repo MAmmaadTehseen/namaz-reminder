@@ -6,6 +6,7 @@
   "description": "Slack namaz (prayer) reminders driven by an editable Slack Canvas, run on GitHub Actions.",
   "scripts": {
     "tick": "tsx scripts/tick.ts",
+    "tick:local": "tsx --env-file=.env scripts/tick.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
