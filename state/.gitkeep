@@ -1,0 +1,2 @@
+# Dedupe markers (sent-YYYY-MM-DD.json) and last-known-good.json are committed here
+# by the workflow so exactly-once delivery survives stateless CI runs. Keep this folder.

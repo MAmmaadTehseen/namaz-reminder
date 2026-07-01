@@ -1,0 +1,53 @@
+name: namaz-reminder
+
+on:
+  schedule:
+    # Every 5 minutes, offset 2 min off the top of the hour to dodge GitHub's peak-load
+    # scheduling delays/drops. Cron is UTC. Free + unlimited on a PUBLIC repo.
+    - cron: "2-59/5 * * * *"
+  workflow_dispatch: {} # manual test runs
+
+# Least privilege + the ability to commit the dedupe marker back.
+permissions:
+  contents: write
+
+# Serialize overlapping late runs so two ticks can never double-post; never cancel an in-flight send.
+concurrency:
+  group: namaz-reminder
+  cancel-in-progress: false
+
+jobs:
+  tick:
+    # Hard kill switch: set repo variable REMINDERS_ENABLED=false to pause everything.
+    if: ${{ vars.REMINDERS_ENABLED != 'false' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci --no-audit --no-fund
+
+      - name: Run reminder tick
+        env:
+          SLACK_USER_TOKEN: ${{ secrets.SLACK_USER_TOKEN }}
+          SLACK_CANVAS_CHANNEL_ID: ${{ secrets.SLACK_CANVAS_CHANNEL_ID }}
+          SLACK_CANVAS_ID: ${{ secrets.SLACK_CANVAS_ID }}
+          SLACK_TARGET: ${{ secrets.SLACK_TARGET }}
+          OWNER_ALERT_TARGET: ${{ secrets.OWNER_ALERT_TARGET }}
+          DEFAULT_OFFSET_MIN: ${{ vars.DEFAULT_OFFSET_MIN || '10' }}
+          GRACE_MIN: ${{ vars.GRACE_MIN || '5' }}
+          WEEKEND_DAYS: ${{ vars.WEEKEND_DAYS || 'Sat,Sun' }}
+          TIMEZONE: ${{ vars.TIMEZONE || 'Asia/Karachi' }}
+          DRY_RUN: ${{ vars.DRY_RUN || 'false' }}
+        run: npx tsx scripts/tick.ts
+
+      - name: Persist dedupe markers
+        if: always()
+        run: bash scripts/commit-state.sh

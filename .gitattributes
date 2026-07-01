@@ -1,0 +1,5 @@
+# Normalise line endings. LF everywhere so the shell script and YAML work on the Linux runner.
+* text=auto eol=lf
+*.sh text eol=lf
+*.png binary
+*.jpg binary
