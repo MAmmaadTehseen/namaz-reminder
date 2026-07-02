@@ -5,14 +5,14 @@
   },
   "asr": {
     "time": "17:20",
-    "offsetMin": 5
+    "offsetMin": 10
   },
   "maghrib": {
     "time": "19:20",
     "offsetMin": 10
   },
   "isha": {
-    "time": "20:28",
-    "offsetMin": 10
+    "time": "11:55",
+    "offsetMin": 5
   }
 }
