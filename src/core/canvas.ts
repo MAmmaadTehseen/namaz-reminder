@@ -120,16 +120,20 @@ function parsePrayerValue(
   let explicitOffset = false;
   let note: string | undefined;
   let template: string | undefined;
+  let skipDays: Weekday[] | undefined;
 
   for (const extra of parts.slice(1)) {
     const off = /^off\s*=\s*(\d{1,3})$/i.exec(extra);
     const noteMatch = /^note\s*=(.*)$/i.exec(extra);
     const msgMatch = /^msg\s*=(.*)$/i.exec(extra);
+    const skipMatch = /^skip\s*=(.*)$/i.exec(extra);
     if (off) {
       offsetMin = Number(off[1]);
       explicitOffset = true;
     } else if (msgMatch) {
       template = msgMatch[1]!.trim() || undefined;
+    } else if (skipMatch) {
+      skipDays = parseWeekdays(skipMatch[1] ?? "") ?? undefined;
     } else if (noteMatch) {
       note = noteMatch[1]!.trim() || undefined;
     } else if (/^off\s*=/i.test(extra)) {
@@ -148,6 +152,7 @@ function parsePrayerValue(
       offsetMin,
       ...(note ? { note } : {}),
       ...(template ? { template } : {}),
+      ...(skipDays ? { skipDays } : {}),
       enabled: !disabled,
     },
     explicitOffset,

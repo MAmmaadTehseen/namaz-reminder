@@ -18,19 +18,23 @@ export function prayerLabel(key: string): string {
   return key.charAt(0).toUpperCase() + key.slice(1);
 }
 
-export function formatReminder(prayer: PrayerSlot): string {
+export function formatReminder(prayer: PrayerSlot, footer?: string): string {
   const label = prayerLabel(prayer.key);
   const at12 = to12Hour(prayer.time);
 
+  let body: string;
   if (prayer.template) {
     const rendered = prayer.template
       .replace(/\{time\}/gi, at12)
       .replace(/\{time24\}/gi, prayer.time)
       .replace(/\{prayer\}/gi, label);
-    return rendered.includes(HERE) ? rendered : `${HERE} ${rendered}`;
+    body = rendered.includes(HERE) ? rendered : `${HERE} ${rendered}`;
+  } else {
+    const noteText = prayer.note ? ` — ${prayer.note}` : "";
+    const lead = prayer.offsetMin > 0 ? ` (in ~${prayer.offsetMin} min)` : "";
+    body = `${HERE} *${label}* namaz at *${at12}*${noteText}${lead}`;
   }
 
-  const noteText = prayer.note ? ` — ${prayer.note}` : "";
-  const lead = prayer.offsetMin > 0 ? ` (in ~${prayer.offsetMin} min)` : "";
-  return `🕌 ${HERE} *${label}* namaz at *${at12}*${noteText}${lead}`;
+  const sig = footer?.trim();
+  return sig ? `${body}\n_${sig}_` : body;
 }

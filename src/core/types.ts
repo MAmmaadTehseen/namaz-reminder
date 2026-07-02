@@ -20,6 +20,8 @@ export interface PrayerSlot {
   note?: string;
   /** Optional full message template overriding the default; supports {time} {time24} {prayer}. */
   template?: string;
+  /** Weekdays on which THIS prayer's reminder is skipped (e.g. Zuhr on Friday). */
+  skipDays?: Weekday[];
   /** false when the Canvas line was commented out (`# zuhr = ...`). */
   enabled: boolean;
   /** true when this slot was filled from last-known-good because the Canvas line failed to parse. */
@@ -57,6 +59,8 @@ export interface TickResult {
   alreadySent: string[];
   /** prayers whose window is not open yet / already passed. */
   notDue: string[];
+  /** prayers skipped today by their per-prayer `skip=` day list (e.g. Zuhr on Friday). */
+  skippedDay: string[];
   /** parse/network problems surfaced this run. */
   problems: string[];
   /** Canvas last-edited unix ts, when available (freshness signal). */

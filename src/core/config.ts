@@ -26,6 +26,8 @@ export interface Config {
   weekendDays: Weekday[];
   timezone: string;
   stateDir: string;
+  /** Small italic footer appended to every reminder (e.g. "automated by ammaad"). */
+  footer: string;
   dryRun: boolean;
   /** Hard kill switch (also enforced by the workflow `if:` guard). */
   remindersEnabled: boolean;
@@ -42,6 +44,7 @@ const EnvSchema = z.object({
   WEEKEND_DAYS: z.string().optional(),
   TIMEZONE: z.string().optional(),
   STATE_DIR: z.string().optional(),
+  MESSAGE_FOOTER: z.string().optional(),
   DRY_RUN: z.string().optional(),
   REMINDERS_ENABLED: z.string().optional(),
 });
@@ -73,6 +76,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
     weekendDays: parseWeekdays(e.WEEKEND_DAYS ?? "") ?? [0, 6],
     timezone: e.TIMEZONE || DEFAULT_TZ,
     stateDir: e.STATE_DIR || "state",
+    footer: e.MESSAGE_FOOTER ?? "",
     dryRun: toBool(e.DRY_RUN, false),
     remindersEnabled: toBool(e.REMINDERS_ENABLED, true),
   };

@@ -116,6 +116,16 @@ describe("parseCanvas — validation", () => {
     expect(parseCanvas(fence(["Status: OFF", "zuhr = 14:05"]), OPTS).status).toBe("off");
   });
 
+  it("parses per-prayer skip days (e.g. Zuhr on Friday)", () => {
+    const s = parseCanvas(
+      fence(["zuhr = 11:48 | skip=Fri", "asr = 17:00 | off=5 | skip=Fri,Sun"]),
+      OPTS,
+    );
+    const byKey = Object.fromEntries(s.prayers.map((p) => [p.key, p]));
+    expect(byKey.zuhr!.skipDays).toEqual([5]);
+    expect(byKey.asr).toMatchObject({ offsetMin: 5, skipDays: [5, 0] });
+  });
+
   it("parses per-prayer note, msg template, and bare free-text note", () => {
     const s = parseCanvas(
       fence([

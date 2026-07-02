@@ -25,6 +25,22 @@ describe("formatReminder", () => {
     expect(text).toContain("in ~10 min");
   });
 
+  it("has no mosque icon in the default message", () => {
+    expect(formatReminder(slot())).not.toContain("🕌");
+  });
+
+  it("appends an italic footer when provided (default and template)", () => {
+    expect(formatReminder(slot(), "automated by ammaad")).toContain("\n_automated by ammaad_");
+    expect(formatReminder(slot({ template: "Asr {time}" }), "automated by ammaad")).toContain(
+      "\n_automated by ammaad_",
+    );
+  });
+
+  it("omits the footer when empty/whitespace", () => {
+    expect(formatReminder(slot(), "")).not.toContain("_");
+    expect(formatReminder(slot(), "   ")).not.toContain("_");
+  });
+
   it("omits the lead-time hint when offset is 0", () => {
     expect(formatReminder(slot({ offsetMin: 0 }))).not.toContain("in ~");
   });

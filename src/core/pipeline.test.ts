@@ -26,6 +26,7 @@ function makeConfig(over: Partial<Config> = {}): Config {
     weekendDays: [0, 6],
     timezone: "Asia/Karachi",
     stateDir,
+    footer: "",
     dryRun: false,
     remindersEnabled: true,
     ...over,
@@ -63,6 +64,7 @@ const canvas = (lines: string[]): string => ["```", ...lines, "```"].join("\n");
 
 // 2026-07-01 09:00Z -> Karachi Wed 14:00. A prayer at 14:05 with offset 10 => window [13:55,14:10].
 const WED_1400Z = new Date("2026-07-01T09:00:00Z");
+const FRI_1400Z = new Date("2026-07-03T09:00:00Z"); // Friday, a working day (weekend is Sat/Sun)
 const SAT_1400Z = new Date("2026-07-04T09:00:00Z");
 
 describe("runTick", () => {
@@ -124,6 +126,29 @@ describe("runTick", () => {
     const res = await runTick(makeConfig(), WED_1400Z, r.deps);
     expect(res).toMatchObject({ status: "skipped", reason: "status-off" });
     expect(r.posts).toHaveLength(0);
+  });
+
+  it("skips a specific prayer on its skip= day but posts it on other days", async () => {
+    const canvasText = canvas(["zuhr = 14:05 | skip=Fri"]);
+
+    // Friday: Zuhr is skipped even though its window is open.
+    const rFri = recorder(canvasText);
+    const fri = await runTick(makeConfig(), FRI_1400Z, rFri.deps);
+    expect(fri.skippedDay).toEqual(["zuhr@14:05"]);
+    expect(rFri.posts).toHaveLength(0);
+
+    // Wednesday: same prayer posts normally.
+    const rWed = recorder(canvasText);
+    const wed = await runTick(makeConfig(), WED_1400Z, rWed.deps);
+    expect(wed.posted).toEqual(["zuhr@14:05"]);
+    expect(rWed.posts).toHaveLength(1);
+  });
+
+  it("appends the footer to the posted message", async () => {
+    const r = recorder(canvas(["zuhr = 14:05"]));
+    await runTick(makeConfig({ footer: "automated by ammaad" }), WED_1400Z, r.deps);
+    expect(r.posts[0]!.text).toContain("_automated by ammaad_");
+    expect(r.posts[0]!.text).not.toContain("🕌");
   });
 
   it("skips on weekends", async () => {

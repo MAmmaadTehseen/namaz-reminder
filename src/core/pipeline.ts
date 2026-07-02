@@ -46,6 +46,7 @@ export async function runTick(
     posted: [],
     alreadySent: [],
     notDue: [],
+    skippedDay: [],
     problems: [],
     canvasEditTimestamp: null,
     dryRun: config.dryRun,
@@ -102,6 +103,13 @@ export async function runTick(
   const marker: Marker = await readMarker(config.stateDir, local.dateKey);
   for (const prayer of enabledPrayers) {
     const key = makeKey(prayer.key, prayer.time);
+
+    // Per-prayer day skip (e.g. Zuhr on Friday).
+    if (prayer.skipDays?.includes(local.weekday)) {
+      result.skippedDay.push(key);
+      continue;
+    }
+
     const due = isDue({
       nowMinutes: local.minutesSinceMidnight,
       prayerMinutes: prayer.minutes,
@@ -123,7 +131,7 @@ export async function runTick(
       continue;
     }
 
-    await d.postMessage(config.slackUserToken, config.target, formatReminder(prayer));
+    await d.postMessage(config.slackUserToken, config.target, formatReminder(prayer, config.footer));
     marker[key] = now.toISOString();
     await writeMarker(config.stateDir, local.dateKey, marker); // persist after each send
     result.posted.push(key);

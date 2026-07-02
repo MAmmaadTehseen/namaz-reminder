@@ -56,7 +56,11 @@ maghrib = 19:45 | msg=Maghrib at {time} — rooftop today
 | `... \| on second floor` | **Note** appended to the standard message (bare text after `\|`). |
 | `... \| note=on second floor` | Same as above, explicit. |
 | `... \| msg=Asr at {time} on 2F` | **Full custom message.** Placeholders: `{time}`, `{time24}`, `{prayer}`. `<!here>` is added automatically. |
+| `... \| skip=Fri` | **Don't remind this prayer** on those weekday(s), comma-separated (e.g. `skip=Fri,Sun`). Great for Zuhr on Jummah. |
 | `# zuhr = 14:05` | A leading `#` disables (comments out) the line. |
+
+Every reminder also gets a small italic footer (default `automated by ammaad`), set via the
+`MESSAGE_FOOTER` variable/env (blank = no footer).
 
 **Rules & safety**
 - Times **must** be 24-hour `HH:MM` (e.g. `17:00`). A malformed time (`5:12am`) is **skipped**
