@@ -111,6 +111,45 @@ The scheduled workflow runs on the **default branch** only; the first push above
 
 **Kill switch:** set variable `REMINDERS_ENABLED=false` (or `Status: OFF` in the Canvas) to pause.
 
+## Reliable 5-minute scheduling (external trigger)
+
+GitHub's built-in `schedule:` cron is **best-effort and heavily throttled** — under load it silently
+drops most runs (observed: a `2-59/5` cron actually firing only every ~1–4 hours). That's too
+unreliable for prayer windows, so drive the workflow from an external clock via
+`workflow_dispatch` (the `schedule:` stays as a free backup).
+
+**1. Create a fine-grained GitHub token** (<https://github.com/settings/personal-access-tokens>):
+
+- Resource owner: `MAmmaadTehseen`; Repository access: **Only select repositories → `namaz-reminder`**
+- Permissions: **Actions → Read and write** (nothing else needed)
+- Copy the token (`github_pat_...`).
+
+**2. Create a cron job at <https://cron-job.org>** (free) with:
+
+- URL: `https://api.github.com/repos/MAmmaadTehseen/namaz-reminder/actions/workflows/remind.yml/dispatches`
+- Method: **POST**
+- Schedule: **every 5 minutes**
+- Headers:
+  - `Authorization: Bearer github_pat_...`
+  - `Accept: application/vnd.github+json`
+  - `X-GitHub-Api-Version: 2022-11-28`
+  - `User-Agent: namaz-reminder-cron`
+- Request body: `{"ref":"main"}`
+
+**3. Test it** (expect HTTP `204 No Content`):
+
+```bash
+curl -i -X POST \
+  -H "Accept: application/vnd.github+json" \
+  -H "Authorization: Bearer github_pat_YOUR_TOKEN" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  https://api.github.com/repos/MAmmaadTehseen/namaz-reminder/actions/workflows/remind.yml/dispatches \
+  -d '{"ref":"main"}'
+```
+
+Then check `gh run list --workflow=remind.yml` — you should see a fresh `workflow_dispatch` run.
+Each dispatch is a normal run (deduped + serialized), and free on a public repo.
+
 ## Local development
 
 ```bash
