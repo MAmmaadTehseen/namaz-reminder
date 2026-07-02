@@ -44,10 +44,10 @@ describe("parseHHMM", () => {
 });
 
 describe("to12Hour", () => {
-  it("formats 24h to friendly 12h", () => {
-    expect(to12Hour("14:05")).toBe("2:05 PM");
+  it("formats 24h to friendly 12h (zero-padded hour)", () => {
+    expect(to12Hour("14:05")).toBe("02:05 PM");
     expect(to12Hour("00:00")).toBe("12:00 AM");
     expect(to12Hour("12:00")).toBe("12:00 PM");
-    expect(to12Hour("09:30")).toBe("9:30 AM");
+    expect(to12Hour("09:30")).toBe("09:30 AM");
   });
 });

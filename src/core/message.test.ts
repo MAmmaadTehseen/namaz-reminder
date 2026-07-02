@@ -18,11 +18,8 @@ describe("formatReminder", () => {
     expect(text).not.toMatch(/(^|[^!])@here/); // no bare @here
   });
 
-  it("includes a title-cased label and 12-hour time", () => {
-    const text = formatReminder(slot());
-    expect(text).toContain("*Asr*");
-    expect(text).toContain("*5:00 PM*");
-    expect(text).toContain("in ~10 min");
+  it("uses the plain '<Prayer> at <time>' style (no 'namaz', no lead hint)", () => {
+    expect(formatReminder(slot())).toBe("<!here> Asr at 05:00 PM");
   });
 
   it("has no mosque icon in the default message", () => {
@@ -41,20 +38,14 @@ describe("formatReminder", () => {
     expect(formatReminder(slot(), "   ")).not.toContain("_");
   });
 
-  it("omits the lead-time hint when offset is 0", () => {
-    expect(formatReminder(slot({ offsetMin: 0 }))).not.toContain("in ~");
-  });
-
   it("appends a per-prayer note to the standard message", () => {
     const text = formatReminder(slot({ note: "on second floor" }));
-    expect(text).toContain("*5:00 PM*");
-    expect(text).toContain("on second floor");
-    expect(text).toContain("<!here>");
+    expect(text).toBe("<!here> Asr at 05:00 PM — on second floor");
   });
 
   it("renders a full template with placeholders and guarantees the ping", () => {
     const text = formatReminder(slot({ template: "Asar at {time} on second floor" }));
-    expect(text).toBe("<!here> Asar at 5:00 PM on second floor");
+    expect(text).toBe("<!here> Asar at 05:00 PM on second floor");
   });
 
   it("does not double-add <!here> when the template already has it", () => {

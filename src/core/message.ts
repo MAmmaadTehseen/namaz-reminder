@@ -30,9 +30,9 @@ export function formatReminder(prayer: PrayerSlot, footer?: string): string {
       .replace(/\{prayer\}/gi, label);
     body = rendered.includes(HERE) ? rendered : `${HERE} ${rendered}`;
   } else {
+    // Matches the team's manual style, e.g. "Zohr at 02:05 PM".
     const noteText = prayer.note ? ` — ${prayer.note}` : "";
-    const lead = prayer.offsetMin > 0 ? ` (in ~${prayer.offsetMin} min)` : "";
-    body = `${HERE} *${label}* namaz at *${at12}*${noteText}${lead}`;
+    body = `${HERE} ${label} at ${at12}${noteText}`;
   }
 
   const sig = footer?.trim();

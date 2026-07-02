@@ -81,7 +81,7 @@ export function to12Hour(value: string): string {
   const min = minutes % 60;
   const period = h24 < 12 ? "AM" : "PM";
   const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-  return `${h12}:${pad2(min)} ${period}`;
+  return `${pad2(h12)}:${pad2(min)} ${period}`;
 }
 
 function pad2(n: number): string {
