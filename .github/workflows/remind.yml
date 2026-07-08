@@ -47,7 +47,7 @@ jobs:
           GRACE_MIN: ${{ vars.GRACE_MIN || '5' }}
           WEEKEND_DAYS: ${{ vars.WEEKEND_DAYS || 'Sat,Sun' }}
           TIMEZONE: ${{ vars.TIMEZONE || 'Asia/Karachi' }}
-          MESSAGE_FOOTER: ${{ vars.MESSAGE_FOOTER || 'automated by ammaad' }}
+          MESSAGE_FOOTER: ${{ vars.MESSAGE_FOOTER || '' }}
           DRY_RUN: ${{ vars.DRY_RUN || 'false' }}
         run: npx tsx scripts/tick.ts
 
