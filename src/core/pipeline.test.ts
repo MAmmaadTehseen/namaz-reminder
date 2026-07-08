@@ -17,7 +17,7 @@ afterEach(async () => {
 
 function makeConfig(over: Partial<Config> = {}): Config {
   return {
-    slackUserToken: "xoxp-test",
+    slackToken: "xoxb-test",
     canvasChannelId: "C123",
     target: "C999",
     ownerAlertTarget: "D_OWNER",

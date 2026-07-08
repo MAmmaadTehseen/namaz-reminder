@@ -131,7 +131,7 @@ export async function runTick(
       continue;
     }
 
-    await d.postMessage(config.slackUserToken, config.target, formatReminder(prayer, config.footer));
+    await d.postMessage(config.slackToken, config.target, formatReminder(prayer, config.footer));
     marker[key] = now.toISOString();
     await writeMarker(config.stateDir, local.dateKey, marker); // persist after each send
     result.posted.push(key);

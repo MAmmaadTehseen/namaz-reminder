@@ -9,7 +9,8 @@ import { DEFAULT_TZ } from "./time";
 import { parseWeekdays } from "./calendar";
 
 export interface Config {
-  slackUserToken: string;
+  /** Slack token used for both reading the Canvas and posting — a bot (xoxb) or user (xoxp) token. */
+  slackToken: string;
   /** Channel that hosts the Canvas (to resolve its file id). */
   canvasChannelId?: string;
   /** OR a direct Canvas file id (Fxxxx), bypassing channel lookup. */
@@ -34,7 +35,8 @@ export interface Config {
 }
 
 const EnvSchema = z.object({
-  SLACK_USER_TOKEN: z.string().min(1, "SLACK_USER_TOKEN is required (a Slack user token, xoxp-...)."),
+  SLACK_BOT_TOKEN: z.string().optional(),
+  SLACK_USER_TOKEN: z.string().optional(),
   SLACK_TARGET: z.string().min(1, "SLACK_TARGET is required (channel id or your DM id)."),
   SLACK_CANVAS_CHANNEL_ID: z.string().optional(),
   SLACK_CANVAS_ID: z.string().optional(),
@@ -59,6 +61,13 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
   }
   const e = parsed.data;
 
+  const slackToken = e.SLACK_BOT_TOKEN || e.SLACK_USER_TOKEN;
+  if (!slackToken) {
+    throw new Error(
+      "Invalid configuration:\n- Provide SLACK_BOT_TOKEN (bot token, xoxb-...) or SLACK_USER_TOKEN (user token, xoxp-...).",
+    );
+  }
+
   if (!e.SLACK_CANVAS_CHANNEL_ID && !e.SLACK_CANVAS_ID) {
     throw new Error(
       "Invalid configuration:\n- Provide SLACK_CANVAS_CHANNEL_ID (channel hosting the Canvas) or SLACK_CANVAS_ID (a Canvas file id).",
@@ -66,7 +75,7 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
   }
 
   return {
-    slackUserToken: e.SLACK_USER_TOKEN,
+    slackToken,
     canvasChannelId: e.SLACK_CANVAS_CHANNEL_ID,
     canvasId: e.SLACK_CANVAS_ID,
     target: e.SLACK_TARGET,

@@ -104,9 +104,9 @@ export async function downloadPrivateFile(token: string, url: string): Promise<s
 export async function readCanvas(
   config: Config,
 ): Promise<{ raw: string; editTimestamp: number | null }> {
-  const fileId = config.canvasId ?? (await resolveCanvasFileId(config.slackUserToken, config.canvasChannelId!));
-  const { urlPrivate, editTimestamp } = await getCanvasFileInfo(config.slackUserToken, fileId);
-  const raw = await downloadPrivateFile(config.slackUserToken, urlPrivate);
+  const fileId = config.canvasId ?? (await resolveCanvasFileId(config.slackToken, config.canvasChannelId!));
+  const { urlPrivate, editTimestamp } = await getCanvasFileInfo(config.slackToken, fileId);
+  const raw = await downloadPrivateFile(config.slackToken, urlPrivate);
   return { raw, editTimestamp };
 }
 
@@ -124,7 +124,7 @@ export async function postMessage(token: string, channel: string, text: string):
 /** Send a plain (no @here) alert to the owner about a parse/read problem. */
 export async function alertOwner(config: Config, text: string): Promise<void> {
   try {
-    await postMessage(config.slackUserToken, config.ownerAlertTarget, `⚠️ Namaz reminder: ${text}`);
+    await postMessage(config.slackToken, config.ownerAlertTarget, `⚠️ Namaz reminder: ${text}`);
   } catch {
     // Never let alerting failure crash the tick.
   }

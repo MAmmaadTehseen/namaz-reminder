@@ -71,15 +71,24 @@ Every reminder also gets a small italic footer (default `automated by ammaad`), 
 
 ## One-time setup
 
-### 1. Slack app + user token
+### 1. Slack app + token
+
+One token reads the Canvas **and** posts. Pick **bot** (recommended — posts as an app, survives you
+leaving) or **user** (posts as you).
+
+**Bot token (recommended):**
 1. Create an app "from scratch" at <https://api.slack.com/apps> in your workspace.
-2. **OAuth & Permissions → User Token Scopes** (not bot scopes), add:
-   `chat:write`, `files:read`, `channels:read` (add `groups:read` if the Canvas channel is private).
-3. **Install App** and authorize — copy the **User OAuth Token** (`xoxp-...`).
-4. Make sure you're a member of the channel that holds the Canvas, and create the Canvas with the
-   block above.
-5. Get the channel id (`C…`) and, for DM testing, your DM id (`D…` — open your own DM, or use your
-   user id `U…`).
+2. **OAuth & Permissions → Bot Token Scopes**, add: `chat:write`, `files:read`, `channels:read`
+   (add `groups:read` if the Canvas/target channel is private).
+3. **App Home** → set the bot's display name/icon (that's what teammates will see).
+4. **Install App** → copy the **Bot User OAuth Token** (`xoxb-...`) → store as `SLACK_BOT_TOKEN`.
+5. **Invite the bot** to the Canvas channel *and* the target channel: type `/invite @YourBot` in each.
+   (Bots must be members to read a channel's Canvas and to post.)
+
+**User token (alternative — posts as you):** same steps but under **User Token Scopes**, copy the
+`xoxp-...` token into `SLACK_USER_TOKEN`. You must be a member of the channels.
+
+Then get the channel id (`C…`) and, for DM testing, your DM id (`D…`).
 
 ### 2. GitHub repo (public → free 5-min cron)
 The repo is **public** so GitHub Actions minutes are free and unlimited. Your token stays in
@@ -89,7 +98,7 @@ encrypted Secrets — never in the repo.
 # from the project folder, using the gh CLI (already signed in as MAmmaadTehseen):
 gh repo create namaz-reminder --public --source=. --remote=origin --push
 
-gh secret set SLACK_USER_TOKEN          # xoxp-...
+gh secret set SLACK_BOT_TOKEN           # xoxb-...  (or SLACK_USER_TOKEN for xoxp-...)
 gh secret set SLACK_CANVAS_CHANNEL_ID   # C... (channel with the Canvas)
 gh secret set SLACK_TARGET              # D... your DM id for TESTING (switch to C... to go live)
 gh secret set OWNER_ALERT_TARGET        # D... where parse alerts go

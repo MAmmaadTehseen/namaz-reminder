@@ -36,6 +36,8 @@ jobs:
 
       - name: Run reminder tick
         env:
+          # Provide EITHER a bot token (xoxb, posts as the bot) or a user token (xoxp, posts as you).
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
           SLACK_USER_TOKEN: ${{ secrets.SLACK_USER_TOKEN }}
           SLACK_CANVAS_CHANNEL_ID: ${{ secrets.SLACK_CANVAS_CHANNEL_ID }}
           SLACK_CANVAS_ID: ${{ secrets.SLACK_CANVAS_ID }}
