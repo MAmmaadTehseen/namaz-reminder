@@ -25,5 +25,18 @@ const sample: PrayerSlot = {
 
 const text = `🧪 Test — this is how reminders will look:\n${formatReminder(sample, config.footer)}`;
 
-await postMessage(config.slackToken, target, text);
-console.log(`Sent test message to ${target} (token: ${config.slackToken.slice(0, 5)}…).`);
+try {
+  await postMessage(config.slackToken, target, text);
+  console.log(`✅ Sent test message to ${target} (token: ${config.slackToken.slice(0, 5)}…).`);
+} catch (err) {
+  const msg = err instanceof Error ? err.message : String(err);
+  console.error(`❌ Test send failed: ${msg}`);
+  if (/channel_not_found|not_in_channel/.test(msg)) {
+    console.error(
+      "   A bot can't post to your personal DM or a channel it hasn't joined.\n" +
+        "   Use your user ID (U…) so the bot DMs you, or a channel the bot is invited to:\n" +
+        "     TEST_TARGET=U0XXXX npm run test:send",
+    );
+  }
+  process.exit(1);
+}
