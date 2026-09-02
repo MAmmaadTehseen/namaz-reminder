@@ -8,7 +8,7 @@
     "offsetMin": 10
   },
   "maghrib": {
-    "time": "18:45",
+    "time": "18:35",
     "offsetMin": 10
   },
   "isha": {
@@ -20,7 +20,7 @@
     "offsetMin": 10
   },
   "asar": {
-    "time": "17:10",
+    "time": "17:00",
     "offsetMin": 10
   }
 }
