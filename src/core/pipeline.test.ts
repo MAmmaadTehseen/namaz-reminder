@@ -173,6 +173,68 @@ describe("runTick", () => {
     expect(r.alerts[0]).toContain("fajr");
   });
 
+  it("uses a weekday override time for the window, dedupe key and message", async () => {
+    // Wed 14:00 local: base 15:00 is not due, but wed=14:05 is.
+    const r = recorder(canvas(["zuhr = 15:00 | wed=14:05"]));
+    const res = await runTick(makeConfig(), WED_1400Z, r.deps);
+    expect(res.posted).toEqual(["zuhr@14:05"]);
+    expect(r.posts[0]!.text).toBe("<!here> Zuhr at 02:05 PM");
+
+    // Friday: back to the base time -> not due at 14:00.
+    const rFri = recorder(canvas(["zuhr = 15:00 | wed=14:05"]));
+    const fri = await runTick(makeConfig(), FRI_1400Z, rFri.deps);
+    expect(fri.notDue).toEqual(["zuhr@15:00"]);
+    expect(rFri.posts).toHaveLength(0);
+  });
+
+  it("a date override un-skips a skip= day", async () => {
+    const r = recorder(canvas(["zuhr = 15:00 | skip=Fri | 2026-07-03=14:05"]));
+    const res = await runTick(makeConfig(), FRI_1400Z, r.deps);
+    expect(res.posted).toEqual(["zuhr@14:05"]);
+  });
+
+  it("does not fetch an extra when Extra is off", async () => {
+    const r = recorder(canvas(["zuhr = 14:05"]));
+    let calls = 0;
+    await runTick(makeConfig(), WED_1400Z, { ...r.deps, getExtra: () => (calls++, null) });
+    expect(calls).toBe(0);
+  });
+
+  it("appends the verse/hadith when Extra is on, only for prayers actually posted", async () => {
+    const r = recorder(canvas(["Extra: verse", "zuhr = 14:05", "asr = 17:00"]));
+    const calls: Array<[string, string, number]> = [];
+    await runTick(makeConfig(), WED_1400Z, {
+      ...r.deps,
+      getExtra: (kind, dateKey, slot) => (calls.push([kind, dateKey, slot]), { arabic: "ع", urdu: "اردو", ref: "Qur'an 94:5" }),
+    });
+    expect(calls).toEqual([["verse", "2026-07-01", 0]]); // asr not due -> not picked
+    expect(r.posts[0]!.text).toContain("> ع\n> اردو\n> — _Qur'an 94:5_");
+  });
+
+  it("uses the real curated list by default (Urdu text under the reminder)", async () => {
+    const r = recorder(canvas(["Extra: hadith", "zuhr = 14:05"]));
+    await runTick(makeConfig(), WED_1400Z, r.deps);
+    expect(r.posts[0]!.text).toMatch(/\n> [\u0600-\u06FF].*\n> — _Sahih /);
+  });
+
+  it("still posts the reminder if getExtra throws", async () => {
+    const r = recorder(canvas(["Extra: both", "zuhr = 14:05"]));
+    const res = await runTick(makeConfig(), WED_1400Z, {
+      ...r.deps,
+      getExtra: () => {
+        throw new Error("boom");
+      },
+    });
+    expect(res.posted).toEqual(["zuhr@14:05"]);
+    expect(r.posts[0]!.text).toBe("<!here> Zuhr at 02:05 PM");
+  });
+
+  it("DRY_RUN fills previews with the full message text", async () => {
+    const r = recorder(canvas(["zuhr = 14:05"]));
+    const res = await runTick(makeConfig({ dryRun: true }), WED_1400Z, r.deps);
+    expect(res.previews).toEqual(["<!here> Zuhr at 02:05 PM"]);
+  });
+
   it("safe-fails (alert + error, no posting) when the Canvas cannot be read", async () => {
     const r = recorder("", { throwOnRead: true });
     const res = await runTick(makeConfig(), WED_1400Z, r.deps);

@@ -2,16 +2,19 @@
  * runTick: one poll of the reminder engine. Pure orchestration over the other core modules.
  *
  * Order: kill switch -> read Canvas -> parse+validate -> soft switch / weekend / holiday
- *        -> per-prayer window+dedupe -> post as user -> persist marker + last-known-good.
+ *        -> per-prayer day override/skip -> window+dedupe -> (+ verse/hadith) -> post
+ *        -> persist marker + last-known-good.
  *
  * Slack + clock are injected (deps) so this is fully unit-testable without network or real time.
  */
 import type { Config } from "./config";
-import type { PrayerSlot, TickResult } from "./types";
+import type { Extra, ExtraKind, PrayerSlot, TickResult } from "./types";
 import { getLocalParts } from "./time";
 import { parseCanvas } from "./canvas";
 import { isWeekend, isHoliday } from "./calendar";
 import { isDue } from "./window";
+import { resolveForDay } from "./schedule";
+import { pickExtra } from "./extras";
 import { formatReminder } from "./message";
 import {
   readMarker,
@@ -27,12 +30,15 @@ export interface TickDeps {
   readCanvas: (config: Config) => Promise<{ raw: string; editTimestamp: number | null }>;
   postMessage: (token: string, channel: string, text: string) => Promise<void>;
   alertOwner: (config: Config, text: string) => Promise<void>;
+  /** Verse/hadith for the Canvas `Extra:` setting, for a date + the prayer's slot in the day. */
+  getExtra: (kind: ExtraKind, dateKey: string, slot: number) => Extra | null;
 }
 
 const defaultDeps: TickDeps = {
   readCanvas: slack.readCanvas,
   postMessage: slack.postMessage,
   alertOwner: slack.alertOwner,
+  getExtra: pickExtra,
 };
 
 export async function runTick(
@@ -47,6 +53,7 @@ export async function runTick(
     alreadySent: [],
     notDue: [],
     skippedDay: [],
+    previews: [],
     problems: [],
     canvasEditTimestamp: null,
     dryRun: config.dryRun,
@@ -101,14 +108,14 @@ export async function runTick(
 
   // 5. Per-prayer window + dedupe.
   const marker: Marker = await readMarker(config.stateDir, local.dateKey);
-  for (const prayer of enabledPrayers) {
-    const key = makeKey(prayer.key, prayer.time);
-
-    // Per-prayer day skip (e.g. Zuhr on Friday).
-    if (prayer.skipDays?.includes(local.weekday)) {
-      result.skippedDay.push(key);
+  for (const [slot, base] of enabledPrayers.entries()) {
+    // Today's effective slot: date override > skip= > weekday override > base time.
+    const prayer = resolveForDay(base, local.dateKey, local.weekday);
+    if (!prayer) {
+      result.skippedDay.push(makeKey(base.key, base.time));
       continue;
     }
+    const key = makeKey(prayer.key, prayer.time);
 
     const due = isDue({
       nowMinutes: local.minutesSinceMidnight,
@@ -126,12 +133,16 @@ export async function runTick(
       continue;
     }
 
+    const extra = schedule.extra === "off" ? null : safeExtra(d, schedule.extra, local.dateKey, slot);
+    const text = formatReminder(prayer, config.footer, extra);
+    result.previews.push(text);
+
     if (config.dryRun) {
       result.posted.push(key); // "would post"
       continue;
     }
 
-    await d.postMessage(config.slackToken, config.target, formatReminder(prayer, config.footer));
+    await d.postMessage(config.slackToken, config.target, text);
     marker[key] = now.toISOString();
     await writeMarker(config.stateDir, local.dateKey, marker); // persist after each send
     result.posted.push(key);
@@ -139,6 +150,15 @@ export async function runTick(
 
   result.status = result.posted.length > 0 ? "posted" : "noop";
   return result;
+}
+
+/** Belt-and-braces: an injected getExtra that throws must still never block a reminder. */
+function safeExtra(d: TickDeps, kind: ExtraKind, dateKey: string, slot: number): Extra | null {
+  try {
+    return d.getExtra(kind, dateKey, slot);
+  } catch {
+    return null;
+  }
 }
 
 export type { PrayerSlot };

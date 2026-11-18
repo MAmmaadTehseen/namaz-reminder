@@ -32,4 +32,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 
+# local test runner state (npm run local) — never mixes with the real state/
+/.local-state/
+
 # NOTE: state/ is intentionally NOT ignored — the dedupe markers are committed by the workflow.

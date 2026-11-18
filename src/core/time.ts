@@ -90,3 +90,18 @@ function pad2(n: number): string {
 function pad4(n: number): string {
   return String(n).padStart(4, "0");
 }
+
+/**
+ * The instant at which the wall clock in `timeZone` reads `dateKey` `hhmm`
+ * (e.g. "2026-11-19", "16:40" in Asia/Karachi -> 2026-11-19T11:40Z). Null if malformed.
+ * Used by the local test runner to simulate "what happens at 16:40 on Wednesday".
+ */
+export function zonedDate(dateKey: string, hhmm: string, timeZone: string = DEFAULT_TZ): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey.trim());
+  const mins = parseHHMM(hhmm);
+  if (!m || mins === null) return null;
+  const guess = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Math.floor(mins / 60), mins % 60);
+  const p = getLocalParts(new Date(guess), timeZone);
+  const shownAsUtc = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute);
+  return new Date(guess - (shownAsUtc - guess));
+}

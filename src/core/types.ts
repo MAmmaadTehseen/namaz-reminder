@@ -22,6 +22,10 @@ export interface PrayerSlot {
   template?: string;
   /** Weekdays on which THIS prayer's reminder is skipped (e.g. Zuhr on Friday). */
   skipDays?: Weekday[];
+  /** Per-weekday time overrides, e.g. { 3: "16:45" } for `wed=16:45`. Beats the base time. */
+  weekdayTimes?: Partial<Record<Weekday, string>>;
+  /** One-off date overrides, e.g. { "2026-12-25": "13:00" }. Beats weekday overrides AND `skip=`. */
+  dateTimes?: Record<string, string>;
   /** false when the Canvas line was commented out (`# zuhr = ...`). */
   enabled: boolean;
   /** true when this slot was filled from last-known-good because the Canvas line failed to parse. */
@@ -38,12 +42,25 @@ export interface ParsedSchedule {
   weekendDays: Weekday[];
   /** Dates to skip, "YYYY-MM-DD" (from `Holidays:`). */
   holidays: string[];
+  /** Random verse/hadith appended to each reminder (from the Canvas `Extra:` line). Default "off". */
+  extra: ExtraKind;
   /** All recognised prayer lines (enabled + disabled). */
   prayers: PrayerSlot[];
   /** Non-fatal issues (duplicate keys, unknown directives). */
   warnings: string[];
   /** Hard parse failures (malformed time lines) — trigger an owner alert. */
   errors: string[];
+}
+
+/** What the Canvas `Extra:` directive asks to append to reminders. */
+export type ExtraKind = "off" | "verse" | "hadith" | "both";
+
+/** A curated verse (Arabic + Urdu) or hadith (Urdu only) with its reference, e.g. "Qur'an 2:153". */
+export interface Extra {
+  /** Arabic text — verses only. */
+  arabic?: string;
+  urdu: string;
+  ref: string;
 }
 
 /** Persisted "last valid time we saw for each prayer", used as a fallback on parse failure. */
@@ -61,6 +78,8 @@ export interface TickResult {
   notDue: string[];
   /** prayers skipped today by their per-prayer `skip=` day list (e.g. Zuhr on Friday). */
   skippedDay: string[];
+  /** Full text of each message built this run (posted, or would-post under DRY_RUN). */
+  previews: string[];
   /** parse/network problems surfaced this run. */
   problems: string[];
   /** Canvas last-edited unix ts, when available (freshness signal). */

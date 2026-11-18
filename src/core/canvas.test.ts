@@ -160,3 +160,61 @@ describe("html helpers", () => {
     expect(out).toContain("c");
   });
 });
+
+describe("parseCanvas — per-day time overrides", () => {
+  const OPTS2: ParseOptions = { fallbackOffset: 10, defaultWeekend: [0, 6] };
+
+  it("parses weekday (short + full name) and date overrides", () => {
+    const s = parseCanvas(
+      fence(["asr = 17:00 | wed=16:45 | Friday=16:30 | 2026-12-25=15:00 | off=5"]),
+      OPTS2,
+    );
+    expect(s.errors).toEqual([]);
+    expect(s.prayers[0]).toMatchObject({
+      time: "17:00",
+      offsetMin: 5,
+      weekdayTimes: { 3: "16:45", 5: "16:30" },
+      dateTimes: { "2026-12-25": "15:00" },
+    });
+  });
+
+  it("a malformed override errors but keeps the base line", () => {
+    const s = parseCanvas(fence(["asr = 17:00 | wed=4:45pm"]), OPTS2);
+    expect(s.errors).toHaveLength(1);
+    expect(s.errors[0]).toContain("wed=4:45pm");
+    expect(s.prayers[0]).toMatchObject({ time: "17:00" });
+    expect(s.prayers[0]!.weekdayTimes).toBeUndefined();
+  });
+
+  it("does not confuse note/msg/skip/off fields or prose with overrides", () => {
+    const s = parseCanvas(
+      fence(["asr = 17:00 | off=5 | skip=Fri | msg=Asr {time} | note=weekly=yes"]),
+      OPTS2,
+    );
+    expect(s.errors).toEqual([]);
+    expect(s.prayers[0]).toMatchObject({ offsetMin: 5, skipDays: [5], template: "Asr {time}", note: "weekly=yes" });
+    expect(s.prayers[0]!.weekdayTimes).toBeUndefined();
+  });
+
+  it("parses the Extra directive (default off)", () => {
+    expect(parseCanvas(fence(["zuhr = 14:05"]), OPTS2).extra).toBe("off");
+    expect(parseCanvas(fence(["Extra: verse"]), OPTS2).extra).toBe("verse");
+    expect(parseCanvas(fence(["Extra: Hadith"]), OPTS2).extra).toBe("hadith");
+    expect(parseCanvas(fence(["Extra: both"]), OPTS2).extra).toBe("both");
+    const bad = parseCanvas(fence(["Extra: sometimes"]), OPTS2);
+    expect(bad.extra).toBe("off");
+    expect(bad.warnings[0]).toContain("Extra");
+  });
+});
+
+describe("parseCanvas — inline-code leftovers", () => {
+  it("ignores backticks and non-breaking spaces from Canvas formatting", () => {
+    const s = parseCanvas(fence(["Zohr = 13:40\u00a0`| skip=Fri` ", "Extra: `both`"]), {
+      fallbackOffset: 10,
+      defaultWeekend: [0, 6],
+    });
+    expect(s.errors).toEqual([]);
+    expect(s.prayers[0]).toMatchObject({ key: "zohr", time: "13:40", skipDays: [5] });
+    expect(s.extra).toBe("both");
+  });
+});

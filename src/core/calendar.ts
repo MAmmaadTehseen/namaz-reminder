@@ -21,6 +21,20 @@ const NAME_TO_WEEKDAY: Record<string, Weekday> = {
   sat: 6,
 };
 
+const FULL_NAMES = new Set([
+  "sunday", "monday", "tuesday", "tues", "wednesday", "thursday", "thur", "thurs", "friday", "saturday",
+]);
+
+/**
+ * Parse ONE weekday token strictly: a 3-letter ("wed") or full ("wednesday") name, any case.
+ * Returns null for anything else (so a note like "weekly=..." is never mistaken for a day).
+ */
+export function parseWeekday(token: string): Weekday | null {
+  const t = token.trim().toLowerCase();
+  if (t.length !== 3 && !FULL_NAMES.has(t)) return null;
+  return NAME_TO_WEEKDAY[t.slice(0, 3)] ?? null;
+}
+
 /**
  * Parse a weekend directive value like "Sat, Sun" or "saturday sunday" into Weekday[].
  * Unknown tokens are ignored. Returns null when nothing valid was found (caller keeps default).

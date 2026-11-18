@@ -37,9 +37,10 @@ Status: ON
 default_offset = 10
 Weekend: Sat, Sun
 Holidays: 2026-07-06, 2026-08-14
+Extra: verse
 
-zuhr = 14:05
-asr = 17:00 | off=5 | on second floor
+zuhr = 14:05 | fri=13:30
+asr = 17:00 | off=5 | wed=16:45 | on second floor
 maghrib = 19:45 | msg=Maghrib at {time} — rooftop today
 # isha = 21:15
 ```
@@ -57,7 +58,32 @@ maghrib = 19:45 | msg=Maghrib at {time} — rooftop today
 | `... \| note=on second floor` | Same as above, explicit. |
 | `... \| msg=Asr at {time} on 2F` | **Full custom message.** Placeholders: `{time}`, `{time24}`, `{prayer}`. `<!here>` is added automatically. |
 | `... \| skip=Fri` | **Don't remind this prayer** on those weekday(s), comma-separated (e.g. `skip=Fri,Sun`). Great for Zuhr on Jummah. |
+| `... \| wed=16:45` | **Different time on a weekday** (3-letter or full name, e.g. `wednesday=16:45`). Other days use the base time. Add several: `wed=16:45 \| thu=16:50`. |
+| `... \| 2026-12-25=16:30` | **One-off time on a date.** Beats a weekday override, and even beats `skip=` for that date. |
+| `Extra: verse` / `hadith` / `both` / `off` | Quote a **random Qur'an verse or hadith** under every reminder (default `off`). See below. |
 | `# zuhr = 14:05` | A leading `#` disables (comments out) the line. |
+
+**Which time applies today?** date override → `skip=` → weekday override → base time. The offset
+(`off=` / `default_offset`) applies to whichever time is in effect. A malformed override
+(`wed=4:45pm`) is ignored with a DM alert; the base time keeps working.
+
+**`Extra:` verse/hadith — daily-life guidance.** A curated list of Qur'an verses (**Arabic +
+Urdu**, Kanzul Iman — Ahmed Raza Khan) and hadith from Sahih al-Bukhari / Muslim (**Urdu only**, the
+Prophet's ﷺ words without the chain of narrators) on patience, anger, gratitude, honesty, parents,
+neighbours, speech, kindness and work. It rotates by date and prayer, so nothing repeats within a
+day, and `both` alternates verse/hadith. Nothing is fetched at reminder time.
+
+```
+@here Asr at 05:00 PM
+> فَإِنَّ مَعَ ٱلْعُسْرِ يُسْرًا
+> تو بیشک دشواری کے ساتھ آسانی ہے
+> — Qur'an 94:5
+```
+
+To change the list, edit the references in [`scripts/build-extras.ts`](scripts/build-extras.ts) and
+run `npm run build:extras`. It fetches the text verbatim from [alquran.cloud](https://alquran.cloud/api)
+and the [fawazahmed0 hadith-api](https://github.com/fawazahmed0/hadith-api) and regenerates
+[`src/core/extras-data.ts`](src/core/extras-data.ts) — review the diff before committing.
 
 You can add a small italic footer to every reminder by setting the `MESSAGE_FOOTER` variable/env
 (blank = no footer, the default).
@@ -162,6 +188,26 @@ curl -i -X POST \
 
 Then check `gh run list --workflow=remind.yml` — you should see a fresh `workflow_dispatch` run.
 Each dispatch is a normal run (deduped + serialized), and free on a public repo.
+
+## Local testing — everything in your DM
+
+`npm run local` runs the real engine with your `.env` tokens, but **always posts to your DM**
+(`LOCAL_TARGET`, channel ids are refused) and keeps its dedupe state in `.local-state/` (gitignored),
+so it can never ping the team or touch the production `state/`.
+
+```bash
+npm run local                              # one real tick now (only prayers in their window post)
+npm run local -- --at 16:40                # ...as if it were 16:40 today
+npm run local -- --at "2026-11-19 16:40"   # ...on that date (test a wed= / date override)
+npm run local -- --all                     # send EVERY prayer for today to your DM right now
+npm run local -- --all --at 2026-11-19     # ...as they'd look on that date (overrides + Extra)
+npm run local -- --all --dry               # print instead of posting
+npm run local -- --reset                   # clear .local-state/ so reminders can fire again
+```
+
+Set `LOCAL_TARGET` to your user id (`U…`; a bot token DMs you) or a DM id (`D…`). Optionally set
+`LOCAL_CANVAS_ID` to a personal test Canvas so you can try format changes without editing the
+team's Canvas.
 
 ## Local development
 

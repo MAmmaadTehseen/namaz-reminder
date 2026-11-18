@@ -14,14 +14,17 @@
  *   Holidays: 2026-07-06, 2026-08-14
  *   zuhr = 14:05
  *   asr = 17:00 | off=5        (per-prayer lead-time override)
+ *   asr = 17:00 | wed=16:45    (different time on Wednesdays)
+ *   asr = 17:00 | 2026-12-25=16:30   (one-off time on a date; beats weekday + skip=)
+ *   Extra: verse | hadith | both | off   (random verse/hadith under each reminder)
  *   # isha = 21:15             (leading # disables the line)
  *
  * A prayer time that is not strict 24h HH:MM is a HARD error (never guess a prayer time):
  * the caller alerts the owner and falls back to last-known-good for that prayer.
  */
-import type { ParsedSchedule, PrayerSlot, Weekday } from "./types";
+import type { ExtraKind, ParsedSchedule, PrayerSlot, Weekday } from "./types";
 import { parseHHMM } from "./time";
-import { parseWeekdays, parseHolidays } from "./calendar";
+import { parseWeekday, parseWeekdays, parseHolidays } from "./calendar";
 
 export interface ParseOptions {
   /** Lead time used when the Canvas omits `default_offset`. */
@@ -30,7 +33,7 @@ export interface ParseOptions {
   defaultWeekend: Weekday[];
 }
 
-const DIRECTIVE_KEYS = new Set(["status", "default_offset", "weekend", "holidays"]);
+const DIRECTIVE_KEYS = new Set(["status", "default_offset", "weekend", "holidays", "extra"]);
 
 export function parseCanvas(raw: string, opts: ParseOptions): ParsedSchedule {
   const text = looksLikeHtml(raw) ? htmlToText(raw) : raw;
@@ -41,6 +44,7 @@ export function parseCanvas(raw: string, opts: ParseOptions): ParsedSchedule {
     defaultOffset: opts.fallbackOffset,
     weekendDays: [...opts.defaultWeekend],
     holidays: [],
+    extra: "off",
     prayers: [],
     warnings: [],
     errors: [],
@@ -50,7 +54,9 @@ export function parseCanvas(raw: string, opts: ParseOptions): ParsedSchedule {
   const explicitOffset = new Set<string>(); // keys whose `off=` was set explicitly
 
   for (const rawLine of region.split(/\r?\n/)) {
-    const line = rawLine.trim();
+    // Backticks are never part of the format; they leak in when someone styles part of a line as
+    // inline code in the Canvas (e.g. `| skip=Fri`). Non-breaking spaces count as spaces.
+    const line = rawLine.replace(/`/g, "").replace(/\u00a0/g, " ").trim();
     if (!line) continue;
 
     // A leading '#' either disables a prayer line or is a plain comment.
@@ -81,6 +87,8 @@ export function parseCanvas(raw: string, opts: ParseOptions): ParsedSchedule {
       schedule.errors.push(slot.error);
       continue;
     }
+    // Bad override fields are reported but don't sink the whole line — the base time still works.
+    schedule.errors.push(...slot.overrideErrors);
     if (slot.explicitOffset) explicitOffset.add(key);
     else explicitOffset.delete(key);
 
@@ -106,7 +114,7 @@ function parsePrayerValue(
   value: string,
   defaultOffset: number,
   disabled: boolean,
-): { slot: PrayerSlot; explicitOffset: boolean } | { error: string } {
+): { slot: PrayerSlot; explicitOffset: boolean; overrideErrors: string[] } | { error: string } {
   const parts = value.split("|").map((p) => p.trim());
   const timeStr = parts[0] ?? "";
   const minutes = parseHHMM(timeStr);
@@ -121,8 +129,29 @@ function parsePrayerValue(
   let note: string | undefined;
   let template: string | undefined;
   let skipDays: Weekday[] | undefined;
+  let weekdayTimes: Partial<Record<Weekday, string>> | undefined;
+  let dateTimes: Record<string, string> | undefined;
+  const overrideErrors: string[] = [];
 
   for (const extra of parts.slice(1)) {
+    // Time overrides: `wed=16:45` / `wednesday=16:45` / `2026-12-25=13:00`.
+    const override = /^([a-z]+|\d{4}-\d{2}-\d{2})\s*=\s*(.*)$/i.exec(extra);
+    const overrideDay = override && !/^\d/.test(override[1]!) ? parseWeekday(override[1]!) : null;
+    const overrideDate = override && /^\d/.test(override[1]!) ? override[1]! : null;
+    if (override && (overrideDay !== null || overrideDate !== null)) {
+      const t = override[2]!.trim();
+      if (parseHHMM(t) === null) {
+        overrideErrors.push(
+          `Prayer "${key}" has an invalid override "${extra}" — expected 24h HH:MM (e.g. ${override[1]}=16:45). That override was ignored.`,
+        );
+      } else if (overrideDay !== null) {
+        weekdayTimes = { ...weekdayTimes, [overrideDay]: normaliseTime(t) };
+      } else {
+        dateTimes = { ...dateTimes, [overrideDate!]: normaliseTime(t) };
+      }
+      continue;
+    }
+
     const off = /^off\s*=\s*(\d{1,3})$/i.exec(extra);
     const noteMatch = /^note\s*=(.*)$/i.exec(extra);
     const msgMatch = /^msg\s*=(.*)$/i.exec(extra);
@@ -153,9 +182,12 @@ function parsePrayerValue(
       ...(note ? { note } : {}),
       ...(template ? { template } : {}),
       ...(skipDays ? { skipDays } : {}),
+      ...(weekdayTimes ? { weekdayTimes } : {}),
+      ...(dateTimes ? { dateTimes } : {}),
       enabled: !disabled,
     },
     explicitOffset,
+    overrideErrors,
   };
 }
 
@@ -191,7 +223,22 @@ function applyDirective(schedule: ParsedSchedule, key: string, body: string): vo
       schedule.holidays = parseHolidays(value);
       break;
     }
+    case "extra": {
+      const kind = parseExtraKind(value);
+      if (kind) schedule.extra = kind;
+      else schedule.warnings.push(`Ignored Extra "${value}" — expected verse, hadith, both or off.`);
+      break;
+    }
   }
+}
+
+function parseExtraKind(value: string): ExtraKind | null {
+  const v = value.trim().toLowerCase().split(/\s+/)[0] ?? "";
+  if (v === "verse" || v === "verses" || v === "quran" || v === "ayah") return "verse";
+  if (v === "hadith" || v === "hadees" || v === "hadis") return "hadith";
+  if (v === "both" || v === "on") return "both";
+  if (v === "off" || v === "none") return "off";
+  return null;
 }
 
 function normaliseTime(timeStr: string): string {

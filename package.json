@@ -8,6 +8,8 @@
     "tick": "tsx scripts/tick.ts",
     "tick:local": "tsx --env-file=.env scripts/tick.ts",
     "test:send": "tsx --env-file=.env scripts/test-send.ts",
+    "local": "NODE_OPTIONS=--no-network-family-autoselection tsx --env-file=.env scripts/local.ts",
+    "build:extras": "NODE_OPTIONS=--no-network-family-autoselection tsx scripts/build-extras.ts",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",

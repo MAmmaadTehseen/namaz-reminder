@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getLocalParts, parseHHMM, to12Hour } from "./time";
+import { getLocalParts, parseHHMM, to12Hour, zonedDate } from "./time";
 
 describe("getLocalParts (Asia/Karachi, UTC+5, no DST)", () => {
   it("converts a UTC instant to Karachi wall-clock", () => {
@@ -49,5 +49,20 @@ describe("to12Hour", () => {
     expect(to12Hour("00:00")).toBe("12:00 AM");
     expect(to12Hour("12:00")).toBe("12:00 PM");
     expect(to12Hour("09:30")).toBe("09:30 AM");
+  });
+});
+
+describe("zonedDate", () => {
+  it("converts a Karachi wall-clock time to the right instant", () => {
+
+    const d = zonedDate("2026-11-19", "16:40", "Asia/Karachi")!;
+    expect(d.toISOString()).toBe("2026-11-19T11:40:00.000Z");
+    expect(getLocalParts(d, "Asia/Karachi")).toMatchObject({ dateKey: "2026-11-19", hour: 16, minute: 40, weekday: 4 });
+  });
+
+  it("returns null for malformed input", () => {
+
+    expect(zonedDate("19-11-2026", "16:40")).toBeNull();
+    expect(zonedDate("2026-11-19", "4:40pm")).toBeNull();
   });
 });

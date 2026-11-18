@@ -61,3 +61,32 @@ describe("prayerLabel", () => {
     expect(prayerLabel("maghrib")).toBe("Maghrib");
   });
 });
+
+describe("formatReminder — Extra", () => {
+  const verse = { arabic: "فَٱذْكُرُونِىٓ أَذْكُرْكُمْ", urdu: "سو تم مجھے یاد کرو۔", ref: "Qur'an 2:152" };
+  const hadith = { urdu: "غصہ نہ ہوا کر۔", ref: "Sahih al-Bukhari 6116" };
+
+  it("quotes a verse as Arabic then Urdu, with the reference, before the footer", () => {
+    expect(formatReminder(slot(), "auto", verse)).toBe(
+      "<!here> Asr at 05:00 PM\n> فَٱذْكُرُونِىٓ أَذْكُرْكُمْ\n> سو تم مجھے یاد کرو۔\n> — _Qur'an 2:152_\n_auto_",
+    );
+  });
+
+  it("quotes a hadith in Urdu only", () => {
+    expect(formatReminder(slot(), "", hadith)).toBe(
+      "<!here> Asr at 05:00 PM\n> غصہ نہ ہوا کر۔\n> — _Sahih al-Bukhari 6116_",
+    );
+  });
+
+  it("works with a msg= template too", () => {
+    expect(formatReminder(slot({ template: "Asr at {time} on 2F" }), "", hadith)).toBe(
+      "<!here> Asr at 05:00 PM on 2F\n> غصہ نہ ہوا کر۔\n> — _Sahih al-Bukhari 6116_",
+    );
+  });
+
+  it("escapes Slack control characters", () => {
+    const text = formatReminder(slot(), "", { urdu: "a <!channel> & b", ref: "x" });
+    expect(text).toContain("a &lt;!channel&gt; &amp; b");
+    expect(text).not.toContain("<!channel>");
+  });
+});
